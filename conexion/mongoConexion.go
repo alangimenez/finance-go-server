@@ -31,10 +31,13 @@ func EstablecerConexion() *mongo.Client {
 var Client *mongo.Client = EstablecerConexion()
 
 func getURi() string {
+	scope := os.Getenv("SCOPE")
 	// Load environment configs
-	errEnv := godotenv.Load("config.env")
-	if errEnv != nil {
-		fmt.Println("Error cargando el archivo de configuración:", errEnv)
+	if scope != "PROD" {
+		errEnv := godotenv.Load("config.env")
+		if errEnv != nil {
+			fmt.Println("Error cargando el archivo de configuración:", errEnv)
+		}
 	}
 	return os.Getenv("MONGO_DB_URI")
 }
