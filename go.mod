@@ -2,7 +2,12 @@ module github.com/alangimenez/finance-go-server
 
 go 1.18
 
-require github.com/gin-gonic/gin v1.7.4
+require (
+	github.com/joho/godotenv v1.5.1
+	github.com/rs/cors v1.10.1
+	go.mongodb.org/mongo-driver v1.13.0
+    github.com/gin-gonic/gin v1.7.4
+)
 
 require (
 	github.com/gin-contrib/sse v0.1.0 // indirect
