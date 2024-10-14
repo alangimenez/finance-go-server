@@ -2,10 +2,10 @@ package repositories
 
 import (
 	"context"
-	"gofinance/conexion"
-	"gofinance/model"
 	"log"
 
+	"github.com/alangimenez/finance-go-server/conexion"
+	"github.com/alangimenez/finance-go-server/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
