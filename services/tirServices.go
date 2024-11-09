@@ -59,9 +59,11 @@ func GetTirs() []responses.TirResponse {
 		fmt.Printf("La tirAnual es de %f", tirAnual)
 
 		response := responses.TirResponse{
-			Key:   bond.Ticket,
-			Value: tirAnual,
-			Price: actualPrice,
+			Key:        bond.Ticket,
+			Value:      tirAnual,
+			Price:      actualPrice,
+			FinishDate: bond.Finish.Format("2006/01/02"),
+			Company:    bond.Company,
 		}
 		listOfTirResponse = append(listOfTirResponse, response)
 	}
