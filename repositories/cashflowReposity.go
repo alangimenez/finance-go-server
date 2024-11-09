@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/alangimenez/finance-go-server/conexion"
 	"github.com/alangimenez/finance-go-server/model"
@@ -15,10 +16,14 @@ import (
 var cashflowCollection *mongo.Collection = conexion.Client.Database("investment-project").Collection("cashflows")
 
 func GetAllCashflowsWithTickets() ([]model.Cashflow, []string) {
-	excludedBonds := []string{"Test 202312101819", "MRECD", "YPCUD", "RUC4D", "CS34D", "CSKZD", "GN34D", "RUC6D"}
+	thirtyDaysLater := time.Now().AddDate(0, 0, 30)
+
+	filter := bson.M{
+		"finish": bson.M{"$gte": thirtyDaysLater},
+	}
 
 	// Consultar todos los documentos en la colección
-	cursor, err := cashflowCollection.Find(context.TODO(), bson.D{{Key: "ticket", Value: bson.D{{Key: "$nin", Value: excludedBonds}}}})
+	cursor, err := cashflowCollection.Find(context.TODO(), filter)
 	if err != nil {
 		log.Fatal(err)
 	}
