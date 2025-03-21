@@ -18,3 +18,11 @@ func GetPrice(c *gin.Context) float64 {
 func GetTicket(c *gin.Context) string {
 	return c.Query("ticket")
 }
+
+func GetMode(c *gin.Context) string {
+	mode := c.Query("mode")
+	if mode != "scheduled" && mode != "realtime" {
+		panic("mode must be scheduled or realtime")
+	}
+	return mode
+}

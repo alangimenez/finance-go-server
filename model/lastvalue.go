@@ -10,13 +10,13 @@ type Bond struct {
 type Quotes struct {
 	Quotes      []Bond    `bson:"quotes"`
 	Id          string    `bson:"_id"`
-	OtherQuotes PreDolars `bson:"otherQuotes"`
+	OtherQuotes PreDolars `bson:"otherQuotes" json:"otherQuotes"`
 }
 
 type PreDolars struct {
-	Quotes Dolars `bson:"quotes"`
+	Quotes Dolars `bson:"quotes" json:"quotes"`
 }
 
 type Dolars struct {
-	Mep float64 `bson:"dolarMep"`
+	Mep float64 `bson:"dolarMep" json:"dolarMep"`
 }
