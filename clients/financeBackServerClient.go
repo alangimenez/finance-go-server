@@ -11,7 +11,7 @@ import (
 )
 
 // Cliente HTTP con timeout
-var client = &http.Client{Timeout: 10 * time.Second}
+var client = &http.Client{Timeout: 15 * time.Second}
 
 // Función para hacer una solicitud GET
 func GetRealTimeQuotes() model.Quotes {

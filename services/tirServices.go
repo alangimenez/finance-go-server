@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"sync"
 
 	"math"
 	"time"
@@ -22,62 +23,93 @@ func GetTirs(mode string) []responses.TirResponse {
 	}
 
 	fmt.Println(tickets)
-	fmt.Println("other quotes")
-	fmt.Print(quotesList)
-	fmt.Println("other quotes")
+
+	var wg sync.WaitGroup
+	ch := make(chan responses.TirResponse, len(cashflows))
 
 	var listOfTirResponse []responses.TirResponse
 
-	for _, bond := range cashflows {
-		fmt.Printf("Este es el bono %s \n", bond.Ticket)
-		array := createArray(bond.Finish)
-		fmt.Printf("Este es el bono %s after createArray. Length of array: %d \n", bond.Ticket, len(array))
-		actualPrice, errActualPrice := getActualPrice(quotesList.Quotes, bond.Ticket, quotesList.OtherQuotes.Quotes.Mep)
-		if errActualPrice != nil {
-			fmt.Printf("Error obteniendo el precio actual de %s \n", bond.Ticket)
-		}
-		if actualPrice == 0.0 {
-			fmt.Printf("El precio del bono %s es 0", bond.Ticket)
-			continue
-		}
-		fmt.Printf("Para bono %s precio %f", bond.Ticket, actualPrice)
+	for i, bond := range cashflows {
+		wg.Add(1)
+		go calculateTir(i, bond, ch, &wg, quotesList)
+	}
 
-		arrayTwo := addPaymentsToArray(
-			bond.DateOfPayment,
-			bond.AmountInterest,
-			bond.AmountAmortization,
-			array,
-			actualPrice,
-		)
-		fmt.Printf("Este es el bono %s after addPaymentsToArray \n", bond.Ticket)
-		if arrayTwo == nil {
-			fmt.Printf("hola")
-		}
-		for pos, value := range arrayTwo {
-			if value != 0 {
-				fmt.Printf("Pos %d, value %f \n", pos, value)
-			}
-		}
-		/* tir := calcularTIR(arrayTwo)
-		tirAnual := tasaEfectivaAnual(tir / 100)
-		fmt.Printf("La tir es de %0.2f", tirAnual) */
+	wg.Wait()
+	fmt.Println("Todas las gorutinas han finalizado, cerrando el canal.")
+	close(ch)
 
-		// cashflow := []float64{-10000.0, 5000.0, 9000.0}
-		tir := calculoTirByInterpolation(arrayTwo)
-		tirAnual := tasaEfectivaAnual(tir)
-		fmt.Printf("La tirAnual es de %f", tirAnual)
-
-		response := responses.TirResponse{
-			Key:        bond.Ticket,
-			Value:      tirAnual,
-			Price:      actualPrice,
-			FinishDate: bond.Finish.Format("2006/01/02"),
-			Company:    bond.Company,
-		}
+	for response := range ch {
+		fmt.Println("Leyendo respuesta del canal:", response)
 		listOfTirResponse = append(listOfTirResponse, response)
 	}
 
 	return listOfTirResponse
+}
+
+func calculateTir(id int, bond model.Cashflow, ch chan<- responses.TirResponse, wg *sync.WaitGroup, quotesList model.Quotes) {
+	defer wg.Done()
+
+	fmt.Printf("[Goroutine %d] Iniciando con valor: %s\n", id, bond.Ticket)
+
+	// fmt.Printf("Este es el bono %s \n", bond.Ticket)
+	array := createArray(bond.Finish)
+	// fmt.Printf("Este es el bono %s after createArray. Length of array: %d \n", bond.Ticket, len(array))
+	actualPrice, errActualPrice := getActualPrice(quotesList.Quotes, bond.Ticket, quotesList.OtherQuotes.Quotes.Mep)
+	if errActualPrice != nil {
+		fmt.Printf("Error obteniendo el precio actual de %s \n", bond.Ticket)
+	}
+	if actualPrice == 0.0 {
+		// fmt.Printf("El precio del bono %s es 0", bond.Ticket)
+		fmt.Printf("[Goroutine %d] Finalizando con valor: %s\n", id, bond.Ticket)
+		ch <- responses.TirResponse{
+			Key:        bond.Ticket,
+			Value:      0.0,
+			Price:      actualPrice,
+			FinishDate: bond.Finish.Format("2006/01/02"),
+			Company:    bond.Company,
+		}
+		return
+	}
+	// fmt.Printf("Para bono %s precio %f", bond.Ticket, actualPrice)
+
+	arrayTwo := addPaymentsToArray(
+		bond.DateOfPayment,
+		bond.AmountInterest,
+		bond.AmountAmortization,
+		array,
+		actualPrice,
+	)
+	// fmt.Printf("Este es el bono %s after addPaymentsToArray \n", bond.Ticket)
+	/* if arrayTwo == nil {
+		fmt.Printf("hola")
+	}
+	for pos, value := range arrayTwo {
+		if value != 0 {
+			fmt.Printf("Pos %d, value %f \n", pos, value)
+		}
+	} */
+	/* tir := calcularTIR(arrayTwo)
+	tirAnual := tasaEfectivaAnual(tir / 100)
+	fmt.Printf("La tir es de %0.2f", tirAnual) */
+
+	// cashflow := []float64{-10000.0, 5000.0, 9000.0}
+	tir := calculoTirByInterpolation(arrayTwo)
+	tirAnual := tasaEfectivaAnual(tir)
+	// fmt.Printf("La tirAnual es de %f", tirAnual)
+
+	response := responses.TirResponse{
+		Key:        bond.Ticket,
+		Value:      tirAnual,
+		Price:      actualPrice,
+		FinishDate: bond.Finish.Format("2006/01/02"),
+		Company:    bond.Company,
+	}
+
+	fmt.Printf("[Goroutine %d] Finalizando con valor: %s\n", id, bond.Ticket)
+
+	ch <- response
+
+	fmt.Printf("[Goroutine %d] Resultado enviado, finalizando.\n", id)
 }
 
 func CalculateTirWithGivenPrice(price float64, ticket string) (float64, error) {
@@ -100,10 +132,10 @@ func CalculateTirWithGivenPrice(price float64, ticket string) (float64, error) {
 }
 
 func createArray(endDate time.Time) []float64 {
-	fmt.Printf("The endDate is %s", endDate)
+	// fmt.Printf("The endDate is %s", endDate)
 	// parsedEndTime := parseDate(endDate)
 	length := diferenciaEnDias(time.Now(), endDate)
-	fmt.Printf("The length is %d", length)
+	// fmt.Printf("The length is %d", length)
 	var array []float64
 	for i := 0; i < length; i++ {
 		array = append(array, 0)
@@ -124,7 +156,7 @@ func diferenciaEnDias(fecha1, fecha2 time.Time) int {
 }
 
 func getActualPrice(quotesList []model.Bond, ticket string, mep float64) (float64, error) {
-	fmt.Printf("dolar mep %f", mep)
+	// fmt.Printf("dolar mep %f", mep)
 	for _, p := range quotesList {
 		if p.Simbolo == ticket && (p.Moneda == "1" || p.Moneda == "AR$") {
 			return p.UltimoPrecio / mep, nil
@@ -133,7 +165,7 @@ func getActualPrice(quotesList []model.Bond, ticket string, mep float64) (float6
 			return p.UltimoPrecio, nil
 		}
 	}
-	return 0.0, fmt.Errorf("No se encontró el ticket con el nombre %s", ticket)
+	return 0.0, nil
 }
 
 func addPaymentsToArray(paymentDays []time.Time, paymentInterest, paymentAmortization, array []float64, actualPrice float64) []float64 {
@@ -157,18 +189,18 @@ func calculoTirByInterpolation(cashflow []float64) float64 {
 		previousNpvNegative := calcularNPV(-rate+0.000001, cashflow)
 		actualNPVNegative := calcularNPV(-rate, cashflow)
 		if previousNpv >= 0.0 && actualNPV < 0.0 {
-			fmt.Printf("npvPositivo %f \n", previousNpv)
+			/* fmt.Printf("npvPositivo %f \n", previousNpv)
 			fmt.Printf("npvPositivo %f \n", actualNPV)
 			fmt.Printf("tasa previa %f", rate-0.000001)
-			fmt.Printf("tasa actual %f", rate)
+			fmt.Printf("tasa actual %f", rate) */
 			tir = interpolation(rate, previousNpv, actualNPV)
 			break
 		}
 		if previousNpvNegative <= 0.0 && actualNPVNegative > 0.0 {
-			fmt.Printf("npvPositivo %f \n", previousNpvNegative)
+			/* fmt.Printf("npvPositivo %f \n", previousNpvNegative)
 			fmt.Printf("npvPositivo %f \n", actualNPVNegative)
 			fmt.Printf("tasa previa %f", -rate+0.000001)
-			fmt.Printf("tasa actual %f", -rate)
+			fmt.Printf("tasa actual %f", -rate) */
 			tir = interpolation(-rate, previousNpvNegative, actualNPVNegative)
 			break
 		}
