@@ -6,16 +6,25 @@ import (
 	"math"
 	"time"
 
+	"github.com/alangimenez/finance-go-server/clients"
 	"github.com/alangimenez/finance-go-server/model"
 	"github.com/alangimenez/finance-go-server/repositories"
 	"github.com/alangimenez/finance-go-server/responses"
 )
 
-func GetTirs() []responses.TirResponse {
+func GetTirs(mode string) []responses.TirResponse {
 	cashflows, tickets := repositories.GetAllCashflowsWithTickets()
-	quotesList := repositories.GetAllLastvalues()
+	var quotesList model.Quotes
+	if mode == "scheduled" {
+		quotesList = repositories.GetAllLastvalues()
+	} else {
+		quotesList = clients.GetRealTimeQuotes()
+	}
 
-	fmt.Print(tickets)
+	fmt.Println(tickets)
+	fmt.Println("other quotes")
+	fmt.Print(quotesList)
+	fmt.Println("other quotes")
 
 	var listOfTirResponse []responses.TirResponse
 

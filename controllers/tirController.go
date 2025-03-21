@@ -8,7 +8,8 @@ import (
 )
 
 func GetTirs(c *gin.Context) {
-	listOfTirResponse := services.GetTirs()
+	mode := GetMode(c)
+	listOfTirResponse := services.GetTirs(mode)
 
 	c.JSON(http.StatusOK, listOfTirResponse)
 }
